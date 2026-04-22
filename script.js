@@ -8,6 +8,7 @@ const cancelEditButton = document.getElementById('cancel-edit');
 const recordsList = document.getElementById('records-list');
 const recordsEmpty = document.getElementById('records-empty');
 const searchInput = document.getElementById('search-input');
+const gradeFilter = document.getElementById('gradeFilter');
 const modalOverlay = document.getElementById('record-modal');
 const modalBody = document.getElementById('modal-body');
 const modalCloseBtn = document.getElementById('modal-close');
@@ -38,6 +39,19 @@ const APP_USERNAME = 'fallmark';
 const APP_PASSWORD = 'Mnw@5593';
 
 let registrations = JSON.parse(localStorage.getItem('fullMarkRegistrations') || '[]');
+
+// تحديث البيانات القديمة لتتضمن classGrade إذا لم تكن موجودة
+let updated = false;
+registrations = registrations.map(record => {
+    if (!record.classGrade) {
+        updated = true;
+        return { ...record, classGrade: 'غير محدد' };
+    }
+    return record;
+});
+if (updated) {
+    localStorage.setItem('fullMarkRegistrations', JSON.stringify(registrations));
+}
 let currentEditedId = null;
 let currentPhotoDataUrl = null;
 
@@ -201,6 +215,10 @@ function formatSubjects(subjects) {
   return subjects.length ? subjects.join('، ') : 'لا توجد مواد محددة';
 }
 
+function normalizeText(value) {
+  return String(value || '').trim().replace(/\u200F/g, '').toLowerCase();
+}
+
 function matchSearch(record, query) {
   if (!query) return true;
   const q = query.trim().toLowerCase();
@@ -306,13 +324,38 @@ function renderDailyAccounts() {
   summaryContainer.appendChild(summaryGrid);
 }
 
-function renderRegistrations(filterText = '') {
+function renderRegistrations(filterText = '', gradeFilter = 'all') {
   recordsList.innerHTML = '';
-  const filtered = registrations.filter((record) => matchSearch(record, filterText));
+  let filtered = registrations.filter((record) => matchSearch(record, filterText));
+
+// تطبيق فلتر الصف الدراسي - نسخة معدلة ومضمونة
+if (gradeFilter !== 'all') {
+    if (gradeFilter === 'غير محدد') {
+        filtered = filtered.filter(record => normalizeText(record.classGrade) === normalizeText('غير محدد'));
+    } else {
+        const gradeMap = {
+            'primary-1': '1 ابتدائي',
+            'primary-2': '2 ابتدائي',
+            'primary-3': '3 ابتدائي',
+            'primary-4': '4 ابتدائي',
+            'primary-5': '5 ابتدائي',
+            'primary-6': '6 ابتدائي',
+            'prep-1': '1 اعدادي',
+            'prep-2': '2 اعدادي',
+            'prep-3': '3 اعدادي',
+            'sec-1': '1 ثانوي',
+            'sec-2': '2 ثانوي',
+            'sec-3': '3 ثانوي'
+        };
+
+        const expectedGrade = normalizeText(gradeMap[gradeFilter]);
+        filtered = filtered.filter(record => normalizeText(record.classGrade).includes(expectedGrade));
+    }
+}
 
   if (!filtered.length) {
     recordsEmpty.style.display = 'block';
-    recordsEmpty.textContent = filterText ? 'لا توجد نتائج تبحث عنها.' : 'لا يوجد بيانات مسجلة حتى الآن.';
+    recordsEmpty.textContent = (filterText || gradeFilter !== 'all') ? 'لا توجد نتائج تبحث عنها.' : 'لا يوجد بيانات مسجلة حتى الآن.';
     renderDailyAccounts();
     return;
   }
@@ -528,7 +571,7 @@ cancelEditButton.addEventListener('click', () => {
   clearForm();
 });
 
-searchInput.addEventListener('input', () => renderRegistrations(searchInput.value));
+searchInput.addEventListener('input', () => renderRegistrations(searchInput.value, gradeFilter.value));
 modalCloseBtn.addEventListener('click', closeRecordModal);
 modalOverlay.addEventListener('click', (event) => {
   if (event.target === modalOverlay) {
@@ -619,3 +662,4 @@ function calculateResult() {
         display.value = 'Error';
     }
 }
+gradeFilter.addEventListener('change', () => renderRegistrations(searchInput.value, gradeFilter.value));

@@ -50,6 +50,37 @@
       <div class="left-panel">
         <div class="panel-title">البيانات المسجلة</div>
         <div class="search-bar">
+          <div class="filter-wrapper">
+            <label for="gradeFilter" class="filter-label">
+              <span class="filter-icon">🔽</span>
+              فلتر الصف الدراسي
+            </label>
+            <select id="gradeFilter" class="filter-select">
+              <option value="all">الكل</option>
+              <option value="غير محدد">غير محدد</option>
+              
+              <optgroup label="المرحلة الابتدائية">
+                <option value="primary-1">1 ابتدائي</option>
+                <option value="primary-2">2 ابتدائي</option>
+                <option value="primary-3">3 ابتدائي</option>
+                <option value="primary-4">4 ابتدائي</option>
+                <option value="primary-5">5 ابتدائي</option>
+                <option value="primary-6">6 ابتدائي</option>
+              </optgroup>
+
+              <optgroup label="المرحلة الإعدادية">
+                <option value="prep-1">1 اعدادي</option>
+                <option value="prep-2">2 اعدادي</option>
+                <option value="prep-3">3 اعدادي</option>
+              </optgroup>
+
+              <optgroup label="المرحلة الثانوية">
+                <option value="sec-1">1 ثانوي</option>
+                <option value="sec-2">2 ثانوي</option>
+                <option value="sec-3">3 ثانوي</option>
+              </optgroup>
+            </select>
+          </div>
           <input type="search" id="search-input" placeholder="ابحث بالاسم أو رقم الهاتف أو كود الطالب" />
         </div>
         <div class="records-section">
