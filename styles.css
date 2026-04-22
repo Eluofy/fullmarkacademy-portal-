@@ -990,8 +990,44 @@ input[type="checkbox"] {
     cursor: pointer;
     font-size: 1.1rem;
 }
+/* الكود النهائي: بياض ناصع وتناسق كامل للمقاسات */
+.day-cell input[type="text"], 
+.schedule-table-input, 
+.table-input, 
+.Lable-input {
+    /* اللون الأبيض الأساسي */
+    background-color: #ffffff !important; 
+    color: #000000 !important;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
 
-.btn-op { background: #fbb024 !important; color: black !important; }
-.btn-clear { grid-column: span 2; background: #e94560 !important; }
-.btn-equal { background: #00d2ff !important; grid-row: span 2; }
-.btn-zero { grid-column: span 2; }
+    /* توحيد المقاسات مع المربعات القديمة */
+    height: 32px !important;      /* الارتفاع المطابق للأصل */
+    width: 100% !important;       /* ملء الخلية بشكل منظم */
+    padding: 0 8px !important;    /* ضبط المسافة الداخلية للنص */
+    margin: 2px 0 10px 0 !important; /* مسافة بسيطة تحت المربع لترتيب الصفوف */
+    
+    box-sizing: border-box !important;
+    font-size: 13px !important;
+    box-shadow: none !important;  /* ضمان عدم وجود أي ظلال زرقاء أو كحلية */
+}
+
+/* تنظيف الحاوية لضمان عدم ظهور أي لون خلفي */
+.day-cell {
+    background: transparent !important;
+    display: flex;
+    flex-direction: column;
+    padding: 5px !important;
+    gap: 0 !important;
+}
+
+/* تنسيق النصوص التوضيحية (الصف الأول، الثاني..) */
+.day-cell label {
+    display: flex !important;
+    align-items: center;
+    color: #fbb024 !important; /* اللون الذهبي المميز لأكاديميتك */
+    font-size: 11px !important;
+    font-weight: bold;
+    margin-bottom: 2px !important;
+    gap: 5px;
+}
