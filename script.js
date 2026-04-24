@@ -24,6 +24,7 @@ const scheduleOverlay = document.getElementById('schedule-overlay');
 const scheduleCloseButton = document.getElementById('schedule-close');
 const accountDateFilter = document.getElementById('account-date-filter');
 const accountResetButton = document.getElementById('account-reset');
+const accountTeacherFilter = document.getElementById('account-teacher-filter');
 const generateCodeButton = document.getElementById('generate-code');
 const teacherInput = document.getElementById('teacher-name');
 const roomInput = document.getElementById('room-number');
@@ -46,6 +47,19 @@ registrations = registrations.map(record => {
     if (!record.classGrade) {
         updated = true;
         return { ...record, classGrade: 'غير محدد' };
+    }
+    return record;
+});
+if (updated) {
+    localStorage.setItem('fullMarkRegistrations', JSON.stringify(registrations));
+}
+
+// تحديث البيانات القديمة لتتضمن teacherName إذا لم تكن موجودة
+updated = false;
+registrations = registrations.map(record => {
+    if (!record.teacherName) {
+        updated = true;
+        return { ...record, teacherName: '' };
     }
     return record;
 });
@@ -166,7 +180,10 @@ function handleLogin(event) {
   }
 }
 
+let currentModalRecord = null;
+
 function openRecordModal(record) {
+  currentModalRecord = record;
   modalBody.innerHTML = `
     <h3>${record.studentName}</h3>
     <div class="modal-row">
@@ -192,18 +209,13 @@ function openRecordModal(record) {
       <span><strong>الحضور:</strong> ${record.presence || 'غير محدد'}</span>
       <span><strong>المواد:</strong> ${formatSubjects(record.subjects)}</span>
     </div>
-    <button type="button" id="modal-edit-button" class="modal-edit-button">فتح للتعديل</button>
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+      <button type="button" id="modal-edit-button" class="modal-edit-button">فتح للتعديل</button>
+      <button type="button" id="modal-whatsapp-button" class="modal-edit-button" style="background: #25d366;">ارسال عبر واتس</button>
+    </div>
   `;
   modalOverlay.classList.add('active');
   modalOverlay.setAttribute('aria-hidden', 'false');
-
-  const modalEditButton = document.getElementById('modal-edit-button');
-  if (modalEditButton) {
-    modalEditButton.addEventListener('click', () => {
-      closeRecordModal();
-      loadRecordForEdit(record.id);
-    });
-  }
 }
 
 function closeRecordModal() {
@@ -213,6 +225,122 @@ function closeRecordModal() {
 
 function formatSubjects(subjects) {
   return subjects.length ? subjects.join('، ') : 'لا توجد مواد محددة';
+}
+
+function sendStudentDataToWhatsapp(record) {
+  if (!record.guardianNumber) {
+    alert('لا يوجد رقم واتس اب لولي الأمر');
+    return;
+  }
+  
+  const phoneNumber = record.guardianNumber.replace(/\D/g, '');
+  let formattedPhone = phoneNumber;
+  
+  if (phoneNumber.startsWith('0')) {
+    formattedPhone = '20' + phoneNumber.substring(1);
+  } else if (!phoneNumber.startsWith('20')) {
+    formattedPhone = '20' + phoneNumber;
+  }
+
+  const message = `
+*بيانات الطالب - أكاديمية Full Mark*
+
+👤 الاسم: ${record.studentName}
+📌 الكود: ${record.studentCode}
+📞 رقم الطالب: ${record.phoneNumber}
+📚 الصف الدراسي: ${record.classGrade}
+👨‍🏫 المدرس: ${record.teacherName || '-'}
+🏛️ رقم القاعة: ${record.roomNumber || '-'}
+📅 تاريخ التسجيل: ${record.registrationDate}
+📖 المواد: ${formatSubjects(record.subjects)}
+
+💰 سعر الحصة: ${record.lessonPrice}
+💵 المبلغ المتبقي: ${record.remainingPrice}
+📄 سعر الكتاب: ${record.bookPrice}
+
+📍 العنوان: ${record.address}
+✅ الحضور: ${record.presence || 'غير محدد'}
+
+---
+تم الإرسال من نظام أكاديمية Full Mark
+  `.trim();
+
+  const encodedMessage = encodeURIComponent(message);
+  const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+  
+  window.open(whatsappUrl, '_blank');
+}
+
+function sendAccountsToWhatsapp() {
+  const whatsappNumber = document.getElementById('account-whatsapp-number').value.trim();
+  
+  if (!whatsappNumber) {
+    alert('يرجى إدخال رقم الواتس اب');
+    return;
+  }
+
+  const phoneNumber = whatsappNumber.replace(/\D/g, '');
+  let formattedPhone = phoneNumber;
+  
+  if (phoneNumber.startsWith('0')) {
+    formattedPhone = '20' + phoneNumber.substring(1);
+  } else if (!phoneNumber.startsWith('20')) {
+    formattedPhone = '20' + phoneNumber;
+  }
+
+  const selectedDate = accountDateFilter.value;
+  const teacherFilter = accountTeacherFilter.value.trim().toLowerCase();
+
+  let filteredRegistrations = registrations;
+  if (selectedDate) {
+    filteredRegistrations = filteredRegistrations.filter(record => record.registrationDate === selectedDate);
+  }
+  if (teacherFilter) {
+    filteredRegistrations = filteredRegistrations.filter(record => 
+      (record.teacherName || '').toLowerCase().includes(teacherFilter)
+    );
+  }
+
+  const summary = computeDailyAccounts(filteredRegistrations);
+  const dates = Object.keys(summary).sort((a, b) => {
+    if (a === 'غير محدد') return 1;
+    if (b === 'غير محدد') return -1;
+    return new Date(b) - new Date(a);
+  });
+
+  if (!dates.length) {
+    alert('لا توجد حسابات لإرسالها');
+    return;
+  }
+
+  let messageContent = `*تقرير الحسابات اليومية - أكاديمية Full Mark*\n\n`;
+
+  dates.forEach((dateKey) => {
+    const daySummary = summary[dateKey];
+    messageContent += `📅 *تاريخ: ${daySummary.date}*\n`;
+    messageContent += `   📊 عدد التسجيلات: ${daySummary.count}\n`;
+    messageContent += `   💰 إجمالي سعر الحصص: ${formatCurrency(daySummary.lessonTotal)}\n`;
+    messageContent += `   💵 إجمالي المبلغ المدفوع: ${formatCurrency(daySummary.paidTotal)}\n`;
+    messageContent += `   📌 إجمالي المبلغ المتبقي: ${formatCurrency(daySummary.remainingTotal)}\n`;
+    messageContent += `   📄 إجمالي سعر الكتب: ${formatCurrency(daySummary.bookTotal)}\n\n`;
+
+    messageContent += `   *التفاصيل:*\n`;
+    daySummary.records.forEach((record) => {
+      const lessonPrice = parseFloat(record.lessonPrice) || 0;
+      const remainingPrice = parseFloat(record.remainingPrice) || 0;
+      messageContent += `   • ${record.studentName} (${record.studentCode}) - ${record.teacherName || '-'}\n`;
+      messageContent += `     السعر: ${formatCurrency(lessonPrice)} | المتبقي: ${formatCurrency(remainingPrice)}\n`;
+    });
+
+    messageContent += `\n${'─'.repeat(50)}\n\n`;
+  });
+
+  messageContent += `تم الإرسال من نظام أكاديمية Full Mark`;
+
+  const encodedMessage = encodeURIComponent(messageContent);
+  const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+  
+  window.open(whatsappUrl, '_blank');
 }
 
 function normalizeText(value) {
@@ -229,9 +357,8 @@ function matchSearch(record, query) {
   );
 }
 
-function computeDailyAccounts(selectedDate = '') {
-  const filtered = selectedDate ? registrations.filter((record) => record.registrationDate === selectedDate) : registrations;
-  return filtered.reduce((summary, record) => {
+function computeDailyAccounts(filteredRegistrations) {
+  return filteredRegistrations.reduce((summary, record) => {
     const dateKey = record.registrationDate || 'غير محدد';
     const lessonPrice = parseFloat(record.lessonPrice) || 0;
     const remainingPrice = parseFloat(record.remainingPrice) || 0;
@@ -271,7 +398,20 @@ function formatCurrency(value) {
 
 function renderDailyAccounts() {
   const selectedDate = accountDateFilter.value;
-  const summary = computeDailyAccounts(selectedDate);
+  const teacherFilter = accountTeacherFilter.value.trim().toLowerCase();
+
+  // فلتر السجلات بناءً على التاريخ واسم المدرس
+  let filteredRegistrations = registrations;
+  if (selectedDate) {
+    filteredRegistrations = filteredRegistrations.filter(record => record.registrationDate === selectedDate);
+  }
+  if (teacherFilter) {
+    filteredRegistrations = filteredRegistrations.filter(record => 
+      (record.teacherName || '').toLowerCase().includes(teacherFilter)
+    );
+  }
+
+  const summary = computeDailyAccounts(filteredRegistrations);
   const summaryContainer = document.getElementById('daily-summary');
   const recordsContainer = document.getElementById('daily-records');
 
@@ -314,7 +454,7 @@ function renderDailyAccounts() {
         .map((record) => {
           const lessonPrice = parseFloat(record.lessonPrice) || 0;
           const remainingPrice = parseFloat(record.remainingPrice) || 0;
-          return `<span><strong>${record.studentName}</strong> - كود: ${record.studentCode} - سعر الحصة: ${formatCurrency(lessonPrice)} - المبلغ المتبقي: ${formatCurrency(remainingPrice)}</span>`;
+          return `<span><strong>${record.studentName}</strong> - كود: ${record.studentCode} - المدرس: ${record.teacherName || '-'} - سعر الحصة: ${formatCurrency(lessonPrice)} - المبلغ المتبقي: ${formatCurrency(remainingPrice)}</span>`;
         })
         .join('')}
     `;
@@ -394,19 +534,12 @@ if (gradeFilter !== 'all') {
     editBtn.className = 'edit-button';
     editBtn.textContent = 'تعديل';
     editBtn.dataset.id = record.id;
-    editBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      handleEditClick(event);
-    });
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'delete-button';
     deleteBtn.textContent = 'حذف';
-    deleteBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      deleteRecord(record.id);
-    });
+    deleteBtn.dataset.id = record.id;
 
     actions.appendChild(editBtn);
     actions.appendChild(deleteBtn);
@@ -414,11 +547,7 @@ if (gradeFilter !== 'all') {
     card.appendChild(image);
     card.appendChild(info);
     card.appendChild(actions);
-
-    card.addEventListener('click', (event) => {
-      if (event.target.closest('button')) return;
-      openRecordModal(record);
-    });
+    card.dataset.recordId = record.id;
 
     recordsList.appendChild(card);
   });
@@ -515,7 +644,7 @@ form.addEventListener('submit', (event) => {
 
   const formData = new FormData(form);
   const subjects = formData.getAll('subjects');
-  const editingId = editingIdInput.value;
+  const editingId = currentEditedId || editingIdInput.value;
 
   const existingRecord = registrations.find((item) => item.id === editingId);
   const photoName = photoInput.files[0]?.name || existingRecord?.photoName || 'لم يتم اختيار صورة';
@@ -578,6 +707,21 @@ modalOverlay.addEventListener('click', (event) => {
     closeRecordModal();
   }
 });
+
+modalBody.addEventListener('click', (event) => {
+  const editBtn = event.target.closest('#modal-edit-button');
+  if (editBtn && currentModalRecord) {
+    closeRecordModal();
+    loadRecordForEdit(currentModalRecord.id);
+    return;
+  }
+
+  const whatsappBtn = event.target.closest('#modal-whatsapp-button');
+  if (whatsappBtn && currentModalRecord) {
+    sendStudentDataToWhatsapp(currentModalRecord);
+    return;
+  }
+});
 registrationDateInput.addEventListener('change', updateDayName);
 openAccountsButton.addEventListener('click', () => {
   drawerOverlay.classList.add('active');
@@ -609,10 +753,13 @@ scheduleOverlay.addEventListener('click', (event) => {
   }
 });
 accountDateFilter.addEventListener('change', renderDailyAccounts);
+accountTeacherFilter.addEventListener('input', renderDailyAccounts);
 accountResetButton.addEventListener('click', () => {
   accountDateFilter.value = '';
+  accountTeacherFilter.value = '';
   renderDailyAccounts();
 });
+document.getElementById('send-accounts-whatsapp').addEventListener('click', sendAccountsToWhatsapp);
 generateCodeButton.addEventListener('click', () => {
   studentCodeInput.value = generateStudentCode();
 });
@@ -663,3 +810,28 @@ function calculateResult() {
     }
 }
 gradeFilter.addEventListener('change', () => renderRegistrations(searchInput.value, gradeFilter.value));
+
+recordsList.addEventListener('click', (event) => {
+  const editBtn = event.target.closest('.edit-button');
+  if (editBtn) {
+    const id = editBtn.dataset.id;
+    loadRecordForEdit(id);
+    return;
+  }
+
+  const deleteBtn = event.target.closest('.delete-button');
+  if (deleteBtn) {
+    const id = deleteBtn.dataset.id;
+    deleteRecord(id);
+    return;
+  }
+
+  const card = event.target.closest('.record-card');
+  if (card && !event.target.closest('button')) {
+    const recordId = card.dataset.recordId;
+    const record = registrations.find(r => r.id === recordId);
+    if (record) {
+      openRecordModal(record);
+    }
+  }
+});

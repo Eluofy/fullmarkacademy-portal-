@@ -237,7 +237,16 @@
             <label for="account-date-filter">عرض حسابات يوم معين</label>
             <input type="date" id="account-date-filter" />
           </div>
+          <div class="form-group">
+            <label for="account-teacher-filter">البحث باسم المدرس</label>
+            <input type="text" id="account-teacher-filter" placeholder="أدخل اسم المدرس" />
+          </div>
+          <div class="form-group">
+            <label for="account-whatsapp-number">رقم الواتس اب (20201xxxxxxxxxx)</label>
+            <input type="tel" id="account-whatsapp-number" placeholder="20201234567890" />
+          </div>
           <button type="button" id="account-reset" class="small-button">إعادة ضبط العرض</button>
+          <button type="button" id="send-accounts-whatsapp" class="small-button" style="background: #25d366;">ارسال الحسابات واتس</button>
         </div>
       </div>
       <div id="daily-summary" class="daily-summary"></div>
